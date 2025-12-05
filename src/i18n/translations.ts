@@ -22,7 +22,29 @@ export const translations = {
         description: "Visualiza tu progreso hacia tus metas de ahorro"
       }
     },
-    language: "Idioma"
+    language: "Idioma",
+    login: {
+      title: "Iniciar Sesión",
+      email: "Correo electrónico",
+      password: "Contraseña",
+      submit: "Iniciar Sesión",
+      noAccount: "¿No tienes una cuenta?",
+      register: "Regístrate",
+      forgotPassword: "¿Olvidaste tu contraseña?",
+      rememberMe: "Recordarme",
+      backHome: "Volver al inicio"
+    },
+    register: {
+      title: "Crear Cuenta",
+      name: "Nombre",
+      email: "Correo electrónico",
+      password: "Contraseña",
+      confirmPassword: "Confirmar contraseña",
+      submit: "Crear Cuenta",
+      haveAccount: "¿Ya tienes una cuenta?",
+      login: "Inicia sesión",
+      backHome: "Volver al inicio"
+    }
   },
   en: {
     hero: {
@@ -47,7 +69,29 @@ export const translations = {
         description: "Visualize your progress towards your savings goals"
       }
     },
-    language: "Language"
+    language: "Language",
+    login: {
+      title: "Sign In",
+      email: "Email",
+      password: "Password",
+      submit: "Sign In",
+      noAccount: "Don't have an account?",
+      register: "Sign Up",
+      forgotPassword: "Forgot your password?",
+      rememberMe: "Remember me",
+      backHome: "Back to home"
+    },
+    register: {
+      title: "Create Account",
+      name: "Name",
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm password",
+      submit: "Create Account",
+      haveAccount: "Already have an account?",
+      login: "Sign In",
+      backHome: "Back to home"
+    }
   }
 };
 

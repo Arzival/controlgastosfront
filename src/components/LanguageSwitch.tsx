@@ -14,7 +14,7 @@ export const LanguageSwitch = () => {
       aria-label="Cambiar idioma / Change language"
     >
       <span className="text-sm font-medium text-gray-200">
-        {language === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}
+        {language === 'es' ? 'ES' : 'EN'}
       </span>
     </button>
   );
