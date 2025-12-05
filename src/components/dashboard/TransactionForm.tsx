@@ -30,7 +30,7 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.category || !formData.amount || !formData.description) return;
+    if (!formData.category || !formData.amount) return;
 
     addTransaction({
       type: formData.type,
@@ -219,7 +219,6 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
             name="description"
             value={formData.description}
             onChange={handleChange}
-            required
             rows={3}
             className="w-full px-4 py-3 bg-blue-deep/30 border border-dark-accent rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             placeholder={t.dashboard.description}

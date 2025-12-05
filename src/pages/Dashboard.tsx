@@ -5,6 +5,9 @@ import { TransactionFormModal } from '../components/dashboard/TransactionForm';
 import { BalanceCards } from '../components/dashboard/BalanceCards';
 import { TransactionList } from '../components/dashboard/TransactionList';
 import { ChartsSection } from '../components/dashboard/ChartsSection';
+import { SavingsSection } from '../components/dashboard/SavingsSection';
+import type { PeriodType } from '../utils/dateUtils';
+import { isDateInPeriod } from '../utils/dateUtils';
 
 export const Dashboard = () => {
   const { t } = useLanguage();
@@ -12,32 +15,55 @@ export const Dashboard = () => {
   const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [period, setPeriod] = useState<PeriodType>('month');
 
   const filteredTransactions = transactions.filter((transaction) => {
+    const transactionDate = new Date(transaction.date);
+    const matchesPeriod = isDateInPeriod(transactionDate, period);
     const matchesFilter = filter === 'all' || transaction.type === filter;
     const matchesSearch =
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesPeriod && matchesFilter && matchesSearch;
   });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-darker via-blue-dark to-dark-primary">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-left text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300">
             {t.dashboard.title}
           </h1>
+          
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-300">
+              {t.dashboard.period}:
+            </label>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as PeriodType)}
+              className="px-4 py-2 bg-blue-deep/30 border border-dark-accent rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+            >
+              <option value="week">{t.dashboard.week}</option>
+              <option value="biweekly">{t.dashboard.biweekly}</option>
+              <option value="month">{t.dashboard.month}</option>
+            </select>
+          </div>
         </div>
 
         {/* Tarjetas de Balance */}
         <div className="mb-6 sm:mb-8">
-          <BalanceCards />
+          <BalanceCards period={period} />
+        </div>
+
+        {/* Fondos de Ahorro */}
+        <div className="mb-6 sm:mb-8">
+          <SavingsSection />
         </div>
 
         {/* Gráficos */}
         <div className="mb-6 sm:mb-8">
-          <ChartsSection />
+          <ChartsSection period={period} />
         </div>
 
         {/* Lista de Transacciones */}

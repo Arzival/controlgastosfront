@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Transaction, Category } from '../types/transaction';
+import type { SavingsFund, SavingsTransaction } from '../types/savings';
 
 interface TransactionContextType {
   transactions: Transaction[];
@@ -8,6 +9,12 @@ interface TransactionContextType {
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   addCategory: (name: string) => void;
   deleteTransaction: (id: string) => void;
+  // Savings
+  savingsFunds: SavingsFund[];
+  savingsTransactions: SavingsTransaction[];
+  addSavingsFund: (fund: Omit<SavingsFund, 'id' | 'balance' | 'createdAt'>) => void;
+  addSavingsTransaction: (transaction: Omit<SavingsTransaction, 'id'>) => void;
+  deleteSavingsFund: (id: string) => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -25,6 +32,8 @@ const defaultCategories: Category[] = [
 export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
+  const [savingsFunds, setSavingsFunds] = useState<SavingsFund[]>([]);
+  const [savingsTransactions, setSavingsTransactions] = useState<SavingsTransaction[]>([]);
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
     const newTransaction: Transaction = {
@@ -49,6 +58,44 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
+  // Savings functions
+  const addSavingsFund = (fund: Omit<SavingsFund, 'id' | 'balance' | 'createdAt'>) => {
+    const newFund: SavingsFund = {
+      ...fund,
+      id: generateId(),
+      balance: 0,
+      createdAt: new Date().toISOString(),
+    };
+    setSavingsFunds((prev) => [...prev, newFund]);
+  };
+
+  const addSavingsTransaction = (transaction: Omit<SavingsTransaction, 'id'>) => {
+    const newTransaction: SavingsTransaction = {
+      ...transaction,
+      id: generateId(),
+    };
+    setSavingsTransactions((prev) => [newTransaction, ...prev]);
+
+    // Update fund balance
+    setSavingsFunds((prev) =>
+      prev.map((fund) => {
+        if (fund.id === transaction.fundId) {
+          const newBalance =
+            transaction.type === 'deposit'
+              ? fund.balance + transaction.amount
+              : fund.balance - transaction.amount;
+          return { ...fund, balance: Math.max(0, newBalance) };
+        }
+        return fund;
+      })
+    );
+  };
+
+  const deleteSavingsFund = (id: string) => {
+    setSavingsFunds((prev) => prev.filter((f) => f.id !== id));
+    setSavingsTransactions((prev) => prev.filter((t) => t.fundId !== id));
+  };
+
   return (
     <TransactionContext.Provider
       value={{
@@ -57,6 +104,11 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         addTransaction,
         addCategory,
         deleteTransaction,
+        savingsFunds,
+        savingsTransactions,
+        addSavingsFund,
+        addSavingsTransaction,
+        deleteSavingsFund,
       }}
     >
       {children}

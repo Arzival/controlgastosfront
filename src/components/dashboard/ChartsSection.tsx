@@ -1,6 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
+import type { PeriodType } from '../../utils/dateUtils';
+import { isDateInPeriod } from '../../utils/dateUtils';
+
+interface ChartsSectionProps {
+  period: PeriodType;
+}
 import {
   BarChart,
   Bar,
@@ -19,17 +25,23 @@ import {
 
 type ChartType = 'bar' | 'pie' | 'line';
 
-export const ChartsSection = () => {
+export const ChartsSection = ({ period }: ChartsSectionProps) => {
   const { t } = useLanguage();
   const { transactions, categories } = useTransactions();
   const [chartType, setChartType] = useState<ChartType>('bar');
   const [viewType, setViewType] = useState<'category' | 'monthly'>('category');
 
   const chartData = useMemo(() => {
+    // Filtrar transacciones por período
+    const periodTransactions = transactions.filter((t) => {
+      const transactionDate = new Date(t.date);
+      return isDateInPeriod(transactionDate, period);
+    });
+
     if (viewType === 'category') {
       const categoryTotals: Record<string, number> = {};
       
-      transactions.forEach((t) => {
+      periodTransactions.forEach((t) => {
         const key = t.category;
         if (!categoryTotals[key]) {
           categoryTotals[key] = 0;
@@ -50,7 +62,7 @@ export const ChartsSection = () => {
     } else {
       const monthlyTotals: Record<string, { income: number; expenses: number }> = {};
       
-      transactions.forEach((t) => {
+      periodTransactions.forEach((t) => {
         const date = new Date(t.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         
@@ -73,7 +85,7 @@ export const ChartsSection = () => {
           expenses: totals.expenses,
         }));
     }
-  }, [transactions, viewType]);
+  }, [transactions, viewType, period]);
 
   const getCategoryColor = (categoryName: string) => {
     const category = categories.find((c) => c.name === categoryName);
