@@ -59,11 +59,9 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
-      />
-      
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      >
         <div
           className="bg-blue-deep/95 backdrop-blur-sm border border-dark-accent rounded-2xl p-4 sm:p-6 w-full max-w-md"
           onClick={(e) => e.stopPropagation()}

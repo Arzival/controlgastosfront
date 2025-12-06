@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTransactions } from '../contexts/TransactionContext';
@@ -11,11 +12,16 @@ import { isDateInPeriod } from '../utils/dateUtils';
 
 export const Dashboard = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const { transactions } = useTransactions();
   const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [period, setPeriod] = useState<PeriodType>('month');
+
+  const handleLogout = () => {
+    navigate('/login');
+  };
 
   const filteredTransactions = transactions.filter((transaction) => {
     const transactionDate = new Date(transaction.date);
@@ -34,8 +40,19 @@ export const Dashboard = () => {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-left text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300">
             {t.dashboard.title}
           </h1>
-          
+
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>{t.dashboard.logout}</span>
+            </button>
             <label className="text-sm font-medium text-gray-300">
               {t.dashboard.period}:
             </label>
@@ -73,41 +90,38 @@ export const Dashboard = () => {
               <h2 className="text-xl sm:text-2xl font-bold text-gray-100">
                 {t.dashboard.recentTransactions}
               </h2>
-              
+
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex gap-2">
                   <button
                     onClick={() => setFilter('all')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      filter === 'all'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'all'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
+                      }`}
                   >
                     {t.dashboard.all}
                   </button>
                   <button
                     onClick={() => setFilter('expense')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      filter === 'expense'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'expense'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
+                      }`}
                   >
                     {t.dashboard.expenses}
                   </button>
                   <button
                     onClick={() => setFilter('income')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      filter === 'income'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === 'income'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-blue-deep/30 text-gray-300 hover:bg-blue-deep/50'
+                      }`}
                   >
                     {t.dashboard.income}
                   </button>
                 </div>
-                
+
                 <input
                   type="text"
                   placeholder={t.dashboard.search}

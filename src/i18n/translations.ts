@@ -70,8 +70,6 @@ export const translations = {
       noTransactions: "No hay transacciones registradas",
       filterBy: "Filtrar por",
       all: "Todas",
-      expenses: "Gastos",
-      income: "Ingresos",
       search: "Buscar",
       charts: "Gráficos",
       chartType: "Tipo de Gráfico",
@@ -100,12 +98,12 @@ export const translations = {
       withdrawFromFund: "Retirar de",
       currentBalance: "Balance Actual",
       transactionHistory: "Historial",
-      noTransactions: "Sin transacciones",
       deleteFund: "Eliminar Fondo",
       availableBalance: "Dinero Disponible",
       availableToSpend: "Disponible para Gastar",
       insufficientFunds: "No tienes suficiente dinero disponible",
-      maxDeposit: "Máximo disponible"
+      maxDeposit: "Máximo disponible",
+      logout: "Cerrar Sesión"
     }
   },
   en: {
@@ -179,8 +177,6 @@ export const translations = {
       noTransactions: "No transactions registered",
       filterBy: "Filter by",
       all: "All",
-      expenses: "Expenses",
-      income: "Income",
       search: "Search",
       charts: "Charts",
       chartType: "Chart Type",
@@ -209,12 +205,12 @@ export const translations = {
       withdrawFromFund: "Withdraw from",
       currentBalance: "Current Balance",
       transactionHistory: "History",
-      noTransactions: "No transactions",
       deleteFund: "Delete Fund",
       availableBalance: "Available Balance",
       availableToSpend: "Available to Spend",
       insufficientFunds: "You don't have enough available funds",
-      maxDeposit: "Max available"
+      maxDeposit: "Max available",
+      logout: "Logout"
     }
   }
 };
