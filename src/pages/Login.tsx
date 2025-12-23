@@ -1,25 +1,70 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { loginRequest } from '../request/auth/auth.request';
 
 export const Login = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    // Limpiar errores del campo cuando el usuario empiece a escribir
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({
+        ...fieldErrors,
+        [e.target.name]: '',
+      });
+    }
+    if (error) {
+      setError(null);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implementar lógica de login
-    console.log('Login:', formData);
+    setError(null);
+    setFieldErrors({});
+
+    setLoading(true);
+
+    try {
+      const response = await loginRequest({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Guardar el token en localStorage
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+
+      // Redirigir al dashboard
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (err.errors) {
+        // Errores de validación del backend
+        const errors: Record<string, string> = {};
+        Object.keys(err.errors).forEach((key) => {
+          errors[key] = err.errors[key][0]; // Tomar el primer error de cada campo
+        });
+        setFieldErrors(errors);
+        setError(err.message || 'Error al iniciar sesión');
+      } else {
+        setError(err.message || 'Error al iniciar sesión. Por favor, intenta de nuevo.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,6 +89,12 @@ export const Login = () => {
             {t.hero.subtitle}
           </p>
 
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2 text-left">
@@ -56,9 +107,14 @@ export const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-blue-deep/30 border border-dark-accent rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 bg-blue-deep/30 border rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  fieldErrors.email ? 'border-red-500' : 'border-dark-accent'
+                }`}
                 placeholder={t.login.email}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-sm text-red-400 text-left">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -72,9 +128,14 @@ export const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-blue-deep/30 border border-dark-accent rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className={`w-full px-4 py-3 bg-blue-deep/30 border rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  fieldErrors.password ? 'border-red-500' : 'border-dark-accent'
+                }`}
                 placeholder={t.login.password}
               />
+              {fieldErrors.password && (
+                <p className="mt-1 text-sm text-red-400 text-left">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -98,9 +159,10 @@ export const Login = () => {
 
             <button
               type="submit"
-              className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
+              disabled={loading}
+              className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
             >
-              {t.login.submit}
+              {loading ? 'Iniciando sesión...' : t.login.submit}
             </button>
           </form>
 
