@@ -20,6 +20,10 @@ export const Dashboard = () => {
   const [period, setPeriod] = useState<PeriodType>('month');
 
   const handleLogout = () => {
+    // Limpiar el localStorage
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    // Redirigir al login
     navigate('/login');
   };
 
