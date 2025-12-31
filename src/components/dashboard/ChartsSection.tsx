@@ -32,13 +32,13 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
   const [viewType, setViewType] = useState<'category' | 'monthly'>('category');
 
   const chartData = useMemo(() => {
-    // Filtrar transacciones por período
-    const periodTransactions = transactions.filter((t) => {
-      const transactionDate = new Date(t.date);
-      return isDateInPeriod(transactionDate, period);
-    });
-
     if (viewType === 'category') {
+      // Filtrar transacciones por período para vista por categoría
+      const periodTransactions = transactions.filter((t) => {
+        const transactionDate = new Date(t.date);
+        return isDateInPeriod(transactionDate, period);
+      });
+
       const categoryTotals: Record<string, number> = {};
       
       periodTransactions.forEach((t) => {
@@ -60,9 +60,11 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
         }))
         .sort((a, b) => b.value - a.value);
     } else {
+      // Para vista mensual, usar TODAS las transacciones (no filtrar por período)
+      // para tener datos suficientes para el gráfico de líneas
       const monthlyTotals: Record<string, { income: number; expenses: number }> = {};
       
-      periodTransactions.forEach((t) => {
+      transactions.forEach((t) => {
         const date = new Date(t.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         
@@ -79,11 +81,18 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
 
       return Object.entries(monthlyTotals)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([month, totals]) => ({
-          month,
-          income: totals.income,
-          expenses: totals.expenses,
-        }));
+        .map(([month, totals]) => {
+          // Formatear el mes para que sea más legible (ej: "2025-12" -> "Dic 2025")
+          const [year, monthNum] = month.split('-');
+          const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+          const monthName = monthNames[parseInt(monthNum) - 1] || monthNum;
+          return {
+            month: `${monthName} ${year}`,
+            monthKey: month, // Mantener la clave original para ordenamiento
+            income: totals.income,
+            expenses: totals.expenses,
+          };
+        });
     }
   }, [transactions, viewType, period]);
 
@@ -126,6 +135,14 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400">{t.dashboard.noTransactions}</p>
           </div>
+        ) : chartType === 'line' && viewType === 'category' ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-400">Gráfico de líneas disponible solo para tendencia mensual</p>
+          </div>
+        ) : chartType === 'pie' && viewType === 'monthly' ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-400">Gráfico de pastel disponible solo para categorías</p>
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'bar' && viewType === 'category' && (
@@ -151,9 +168,15 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
             )}
 
             {chartType === 'bar' && viewType === 'monthly' && (
-              <BarChart data={chartData}>
+              <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e4976" />
-                <XAxis dataKey="month" stroke="#9ca3af" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#9ca3af"
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
                 <YAxis stroke="#9ca3af" />
                 <Tooltip
                   contentStyle={{
@@ -164,8 +187,8 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
                   }}
                 />
                 <Legend wrapperStyle={{ color: '#9ca3af' }} />
-                <Bar dataKey="income" fill="#10b981" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="expenses" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="income" fill="#10b981" radius={[8, 8, 0, 0]} name="Ingresos" />
+                <Bar dataKey="expenses" fill="#ef4444" radius={[8, 8, 0, 0]} name="Gastos" />
               </BarChart>
             )}
 
@@ -200,10 +223,23 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
             )}
 
             {chartType === 'line' && viewType === 'monthly' && (
-              <LineChart data={chartData}>
+              <LineChart 
+                data={chartData} 
+                margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e4976" />
-                <XAxis dataKey="month" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#9ca3af"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                />
+                <YAxis 
+                  stroke="#9ca3af"
+                  domain={['auto', 'auto']}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#1a2332',
@@ -218,29 +254,24 @@ export const ChartsSection = ({ period }: ChartsSectionProps) => {
                   dataKey="income"
                   stroke="#10b981"
                   strokeWidth={2}
-                  dot={{ fill: '#10b981' }}
+                  dot={{ fill: '#10b981', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Ingresos"
+                  connectNulls={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="expenses"
                   stroke="#ef4444"
                   strokeWidth={2}
-                  dot={{ fill: '#ef4444' }}
+                  dot={{ fill: '#ef4444', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Gastos"
+                  connectNulls={false}
                 />
               </LineChart>
             )}
 
-            {chartType === 'pie' && viewType === 'monthly' && (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400">Gráfico de pastel disponible solo para categorías</p>
-              </div>
-            )}
-
-            {chartType === 'line' && viewType === 'category' && (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400">Gráfico de líneas disponible solo para tendencia mensual</p>
-              </div>
-            )}
           </ResponsiveContainer>
         )}
       </div>
