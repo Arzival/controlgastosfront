@@ -10,6 +10,11 @@ export const calculateAvailableBalance = (
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
+  // Calcular gastos totales
+  const totalExpenses = transactions
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+
   // Calcular depósitos a fondos (dinero que se fue a ahorros)
   const totalDeposits = savingsTransactions
     .filter((t) => t.type === 'deposit')
@@ -17,11 +22,11 @@ export const calculateAvailableBalance = (
 
   // Calcular retiros de fondos (dinero que regresó de ahorros)
   const totalWithdrawals = savingsTransactions
-    .filter((t) => t.type === 'withdraw')
+    .filter((t) => t.type === 'withdrawal')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Dinero disponible = Ingresos - Depósitos + Retiros
-  const available = totalIncome - totalDeposits + totalWithdrawals;
+  // Dinero disponible = Ingresos - Gastos - Depósitos + Retiros
+  const available = totalIncome - totalExpenses - totalDeposits + totalWithdrawals;
 
   return Math.max(0, available);
 };

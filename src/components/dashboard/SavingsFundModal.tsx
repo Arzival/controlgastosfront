@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
+import { createSavingsFundRequest } from '../../request/savings/savings.request';
 
 interface SavingsFundModalProps {
   isOpen: boolean;
@@ -11,36 +12,53 @@ const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => {
   const { t } = useLanguage();
-  const { addSavingsFund } = useTransactions();
+  const { reloadSavingsFunds } = useTransactions();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     color: colors[0],
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    if (error) {
+      setError(null);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    addSavingsFund({
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      color: formData.color,
-    });
+    setLoading(true);
+    setError(null);
 
-    setFormData({
-      name: '',
-      description: '',
-      color: colors[0],
-    });
-    onClose();
+    try {
+      await createSavingsFundRequest({
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        color: formData.color,
+      });
+
+      // Recargar los fondos desde el backend para asegurar sincronización
+      await reloadSavingsFunds();
+
+      setFormData({
+        name: '',
+        description: '',
+        color: colors[0],
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Error al crear la caja de ahorro. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Close modal on Escape key
@@ -79,6 +97,12 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
               </svg>
             </button>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -133,9 +157,10 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
 
             <button
               type="submit"
-              className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
+              disabled={loading}
+              className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
             >
-              {t.dashboard.createFund}
+              {loading ? 'Creando...' : t.dashboard.createFund}
             </button>
           </form>
         </div>

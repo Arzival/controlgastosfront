@@ -1,5 +1,5 @@
 export interface SavingsFund {
-  id: string;
+  id: string | number;
   name: string;
   description: string;
   color: string;

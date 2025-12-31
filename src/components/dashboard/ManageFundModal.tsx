@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
+import { createSavingsTransactionRequest } from '../../request/transactions/transactions.request';
 import { calculateAvailableBalance } from '../../utils/availableBalance';
 
 interface ManageFundModalProps {
@@ -11,10 +12,12 @@ interface ManageFundModalProps {
 
 export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProps) => {
   const { t } = useLanguage();
-  const { transactions, savingsFunds, savingsTransactions, addSavingsTransaction, deleteSavingsFund } = useTransactions();
+  const { transactions, savingsFunds, savingsTransactions, addSavingsTransaction, deleteSavingsFund, reloadSavingsFunds, reloadSavingsTransactions } = useTransactions();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'history'>('deposit');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fund = savingsFunds.find((f) => f.id === fundId);
   const fundTransactions = savingsTransactions
@@ -27,32 +30,50 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
 
   if (!isOpen || !fund) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
 
     const transactionAmount = parseFloat(amount);
     
     if (activeTab === 'deposit' && transactionAmount > availableBalance) {
-      alert(t.dashboard.insufficientFunds);
+      setError(t.dashboard.insufficientFunds || 'Fondos insuficientes');
       return;
     }
     
     if (activeTab === 'withdraw' && transactionAmount > fund.balance) {
-      alert('No tienes suficiente saldo en este fondo');
+      setError('No tienes suficiente saldo en este fondo');
       return;
     }
 
-    addSavingsTransaction({
-      fundId: fund.id,
-      type: activeTab,
-      amount: transactionAmount,
-      description: description.trim() || (activeTab === 'deposit' ? 'Depósito' : 'Retiro'),
-      date: new Date().toISOString().split('T')[0],
-    });
+    setLoading(true);
+    setError(null);
 
-    setAmount('');
-    setDescription('');
+    try {
+      // Convertir 'withdraw' a 'withdrawal' para el backend
+      const transactionType = activeTab === 'deposit' ? 'deposit' : 'withdrawal';
+      
+      await createSavingsTransactionRequest({
+        savings_fund_id: typeof fund.id === 'string' ? parseInt(fund.id) : fund.id,
+        type: transactionType,
+        amount: transactionAmount,
+        description: description.trim() || (activeTab === 'deposit' ? 'Depósito' : 'Retiro'),
+        date: new Date().toISOString().split('T')[0],
+      });
+
+      // Recargar los fondos y transacciones desde el backend para obtener los datos actualizados
+      await Promise.all([
+        reloadSavingsFunds(),
+        reloadSavingsTransactions()
+      ]);
+
+      setAmount('');
+      setDescription('');
+    } catch (err: any) {
+      setError(err.message || 'Error al crear la transacción de ahorro. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -141,6 +162,13 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
             </button>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Content */}
           {activeTab === 'history' ? (
             <div className="space-y-3">
@@ -221,13 +249,19 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className={`flex-1 px-8 py-4 font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 ${
+                  disabled={loading}
+                  className={`flex-1 px-8 py-4 font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:cursor-not-allowed ${
                     activeTab === 'deposit'
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
-                      : 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-500 disabled:to-gray-600 text-white'
+                      : 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 disabled:from-gray-500 disabled:to-gray-600 text-white'
                   }`}
                 >
-                  {activeTab === 'deposit' ? t.dashboard.deposit : t.dashboard.withdraw}
+                  {loading 
+                    ? 'Procesando...' 
+                    : activeTab === 'deposit' 
+                      ? t.dashboard.deposit 
+                      : t.dashboard.withdraw
+                  }
                 </button>
               </div>
             </form>

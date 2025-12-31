@@ -33,6 +33,46 @@ export interface ErrorResponse {
   errors?: ValidationErrors;
 }
 
+// Interfaz para la respuesta de obtener todas las cajas de ahorro
+export interface GetSavingsFundsResponse {
+  status: string;
+  data: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    color: string;
+    balance: number;
+    created_at: string;
+  }>;
+}
+
+/**
+ * Función para obtener todas las cajas de ahorro del usuario
+ * @returns Promise con la respuesta del servidor
+ */
+export const getSavingsFundsRequest = async (): Promise<GetSavingsFundsResponse> => {
+  try {
+    const response = await api.get<GetSavingsFundsResponse>('/savings-funds');
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      // Si hay una respuesta del servidor con errores
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al obtener cajas de ahorro',
+        errors: errorData.errors,
+      };
+    }
+    // Error de red u otro error
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};
+
 /**
  * Función para crear una nueva caja de ahorro
  * @param data - Datos de la caja de ahorro a crear

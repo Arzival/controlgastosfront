@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
+import { createTransactionRequest } from '../../request/transactions/transactions.request';
 import type { TransactionType } from '../../types/transaction';
 
 interface TransactionFormModalProps {
@@ -10,9 +11,11 @@ interface TransactionFormModalProps {
 
 export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalProps) => {
   const { t } = useLanguage();
-  const { addTransaction, categories, addCategory } = useTransactions();
+  const { categories, addCategory, reloadTransactions } = useTransactions();
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     type: 'expense' as TransactionType,
     amount: '',
@@ -26,31 +29,46 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
       ...formData,
       [e.target.name]: e.target.value,
     });
+    if (error) {
+      setError(null);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.category || !formData.amount) return;
 
-    addTransaction({
-      type: formData.type,
-      amount: parseFloat(formData.amount),
-      category: formData.category,
-      description: formData.description,
-      date: formData.date,
-    });
+    setLoading(true);
+    setError(null);
 
-    // Reset form
-    setFormData({
-      type: 'expense',
-      amount: '',
-      category: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-    });
-    
-    // Close modal
-    onClose();
+    try {
+      await createTransactionRequest({
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        category: formData.category,
+        description: formData.description || undefined,
+        date: formData.date,
+      });
+
+      // Recargar las transacciones desde el backend para obtener los datos actualizados
+      await reloadTransactions();
+
+      // Reset form
+      setFormData({
+        type: 'expense',
+        amount: '',
+        category: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+      
+      // Close modal
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Error al crear la transacción. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Close modal on Escape key
@@ -99,6 +117,12 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
               </svg>
             </button>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+              {error}
+            </div>
+          )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -224,9 +248,10 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
 
         <button
           type="submit"
-          className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
+          disabled={loading}
+          className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
         >
-          {t.dashboard.submit}
+          {loading ? 'Guardando...' : t.dashboard.submit}
         </button>
       </form>
         </div>
