@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
 import type { Transaction } from '../../types/transaction';
@@ -9,6 +10,7 @@ interface TransactionListProps {
 export const TransactionList = ({ transactions }: TransactionListProps) => {
   const { t } = useLanguage();
   const { deleteTransaction, categories } = useTransactions();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getCategoryColor = (categoryName: string) => {
     const category = categories.find((c) => c.name === categoryName);
@@ -51,8 +53,20 @@ export const TransactionList = ({ transactions }: TransactionListProps) => {
             </p>
           </div>
           <button
-            onClick={() => deleteTransaction(transaction.id)}
-            className="ml-4 p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0"
+            onClick={async () => {
+              if (confirm('¿Estás seguro de eliminar esta transacción?')) {
+                setDeletingId(transaction.id);
+                try {
+                  await deleteTransaction(transaction.id);
+                } catch (error) {
+                  alert('Error al eliminar la transacción. Por favor, intenta de nuevo.');
+                } finally {
+                  setDeletingId(null);
+                }
+              }
+            }}
+            disabled={deletingId === transaction.id}
+            className="ml-4 p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Eliminar transacción"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

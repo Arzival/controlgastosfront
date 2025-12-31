@@ -97,3 +97,87 @@ export const createCategoryRequest = async (
     };
   }
 };
+
+// ==================== FUNCIONES DELETE ====================
+
+// Interfaz para respuesta de eliminación
+export interface DeleteResponse {
+  status: string;
+  message: string;
+  data?: any;
+}
+
+/**
+ * Función para eliminar una categoría
+ * @param id - ID de la categoría a eliminar
+ * @returns Promise con la respuesta del servidor
+ */
+export const deleteCategoryRequest = async (id: number | string): Promise<DeleteResponse> => {
+  try {
+    const response = await api.post<DeleteResponse>('/categories/delete', { id });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al eliminar categoría',
+        errors: errorData.errors,
+      };
+    }
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};
+
+// ==================== FUNCIONES UPDATE ====================
+
+// Interfaz para los datos de actualización de categoría
+export interface UpdateCategoryData {
+  id: number | string;
+  name?: string;
+  color?: string;
+}
+
+// Interfaz para la respuesta de actualización de categoría
+export interface UpdateCategoryResponse {
+  status: string;
+  message: string;
+  data: {
+    id: number;
+    name: string;
+    color: string;
+    updated_at: string;
+  };
+}
+
+/**
+ * Función para actualizar una categoría
+ * @param data - Datos de la categoría a actualizar
+ * @returns Promise con la respuesta del servidor
+ */
+export const updateCategoryRequest = async (
+  data: UpdateCategoryData
+): Promise<UpdateCategoryResponse> => {
+  try {
+    const response = await api.post<UpdateCategoryResponse>('/categories/update', data);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al actualizar categoría',
+        errors: errorData.errors,
+      };
+    }
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};

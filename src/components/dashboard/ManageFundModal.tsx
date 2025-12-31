@@ -76,10 +76,14 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm('¿Estás seguro de eliminar este fondo? Esta acción no se puede deshacer.')) {
-      deleteSavingsFund(fundId);
-      onClose();
+      try {
+        await deleteSavingsFund(fundId);
+        onClose();
+      } catch (error: any) {
+        alert(error.message || 'Error al eliminar el fondo. Por favor, intenta de nuevo.');
+      }
     }
   };
 

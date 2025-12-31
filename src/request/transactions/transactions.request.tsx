@@ -213,3 +213,121 @@ export const createSavingsTransactionRequest = async (
     };
   }
 };
+
+// ==================== FUNCIONES DELETE ====================
+
+// Interfaz para respuesta de eliminación
+export interface DeleteResponse {
+  status: string;
+  message: string;
+  data?: any;
+}
+
+/**
+ * Función para eliminar una transacción
+ * @param id - ID de la transacción a eliminar
+ * @returns Promise con la respuesta del servidor
+ */
+export const deleteTransactionRequest = async (id: number | string): Promise<DeleteResponse> => {
+  try {
+    const response = await api.post<DeleteResponse>('/transactions/delete', { id });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al eliminar transacción',
+        errors: errorData.errors,
+      };
+    }
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};
+
+/**
+ * Función para eliminar una transacción de ahorro
+ * @param id - ID de la transacción de ahorro a eliminar
+ * @returns Promise con la respuesta del servidor
+ */
+export const deleteSavingsTransactionRequest = async (id: number | string): Promise<DeleteResponse> => {
+  try {
+    const response = await api.post<DeleteResponse>('/savings-transactions/delete', { id });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al eliminar transacción de ahorro',
+        errors: errorData.errors,
+      };
+    }
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};
+
+// ==================== FUNCIONES UPDATE ====================
+
+// Interfaz para los datos de actualización de transacción
+export interface UpdateTransactionData {
+  id: number | string;
+  type?: 'expense' | 'income';
+  amount?: number;
+  category?: string;
+  description?: string;
+  date?: string;
+  savings_fund_id?: number | string | null;
+}
+
+// Interfaz para la respuesta de actualización de transacción
+export interface UpdateTransactionResponse {
+  status: string;
+  message: string;
+  data: {
+    id: number;
+    type: string;
+    amount: number;
+    category: string;
+    description: string | null;
+    date: string;
+    savings_fund_id: number | null;
+    updated_at: string;
+  };
+}
+
+/**
+ * Función para actualizar una transacción
+ * @param data - Datos de la transacción a actualizar
+ * @returns Promise con la respuesta del servidor
+ */
+export const updateTransactionRequest = async (
+  data: UpdateTransactionData
+): Promise<UpdateTransactionResponse> => {
+  try {
+    const response = await api.post<UpdateTransactionResponse>('/transactions/update', data);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const errorData = error.response.data as ErrorResponse;
+      throw {
+        status: error.response.status,
+        message: errorData.message || 'Error al actualizar transacción',
+        errors: errorData.errors,
+      };
+    }
+    throw {
+      status: 500,
+      message: 'Error de conexión. Por favor, intenta de nuevo.',
+      errors: undefined,
+    };
+  }
+};

@@ -2,22 +2,29 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { Transaction, Category } from '../types/transaction';
 import type { SavingsFund, SavingsTransaction } from '../types/savings';
-import { getSavingsFundsRequest } from '../request/savings/savings.request';
-import { getTransactionsRequest, getSavingsTransactionsRequest } from '../request/transactions/transactions.request';
-import { getCategoriesRequest, createCategoryRequest } from '../request/categories/categories.request';
+import { getSavingsFundsRequest, deleteSavingsFundRequest, updateSavingsFundRequest } from '../request/savings/savings.request';
+import { getTransactionsRequest, getSavingsTransactionsRequest, deleteTransactionRequest, deleteSavingsTransactionRequest, updateTransactionRequest } from '../request/transactions/transactions.request';
+import { getCategoriesRequest, createCategoryRequest, deleteCategoryRequest, updateCategoryRequest } from '../request/categories/categories.request';
 
 interface TransactionContextType {
   transactions: Transaction[];
   categories: Category[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   addCategory: (name: string, color?: string) => Promise<void>;
-  deleteTransaction: (id: string) => void;
+  deleteTransaction: (id: string) => Promise<void>;
+  updateTransaction: (id: string, data: Partial<Transaction>) => Promise<void>;
   // Savings
   savingsFunds: SavingsFund[];
   savingsTransactions: SavingsTransaction[];
   addSavingsFund: (fund: Omit<SavingsFund, 'id' | 'balance' | 'createdAt'>) => void;
   addSavingsTransaction: (transaction: Omit<SavingsTransaction, 'id'>) => void;
-  deleteSavingsFund: (id: string) => void;
+  deleteSavingsFund: (id: string) => Promise<void>;
+  updateSavingsFund: (id: string, data: Partial<Omit<SavingsFund, 'id' | 'balance' | 'createdAt'>>) => Promise<void>;
+  deleteSavingsTransaction: (id: string) => Promise<void>;
+  // Categories
+  deleteCategory: (id: string) => Promise<void>;
+  updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
+  // Reload functions
   reloadSavingsFunds: () => Promise<void>;
   reloadTransactions: () => Promise<void>;
   reloadSavingsTransactions: () => Promise<void>;
@@ -187,8 +194,29 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const deleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  const deleteTransaction = async (id: string) => {
+    try {
+      await deleteTransactionRequest(id);
+      // Recargar las transacciones desde el backend
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error al eliminar transacción:', error);
+      throw error; // Re-lanzar el error para que el componente pueda manejarlo
+    }
+  };
+
+  const updateTransaction = async (id: string, data: Partial<Transaction>) => {
+    try {
+      await updateTransactionRequest({
+        id,
+        ...data,
+      });
+      // Recargar las transacciones desde el backend
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error al actualizar transacción:', error);
+      throw error;
+    }
   };
 
   // Savings functions
@@ -224,9 +252,71 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const deleteSavingsFund = (id: string) => {
-    setSavingsFunds((prev) => prev.filter((f) => f.id !== id));
-    setSavingsTransactions((prev) => prev.filter((t) => t.fundId !== id));
+  const deleteSavingsFund = async (id: string) => {
+    try {
+      await deleteSavingsFundRequest(id);
+      // Recargar los fondos y transacciones desde el backend
+      await Promise.all([
+        loadSavingsFunds(),
+        loadSavingsTransactions()
+      ]);
+    } catch (error) {
+      console.error('Error al eliminar fondo de ahorro:', error);
+      throw error;
+    }
+  };
+
+  const updateSavingsFund = async (id: string, data: Partial<Omit<SavingsFund, 'id' | 'balance' | 'createdAt'>>) => {
+    try {
+      await updateSavingsFundRequest({
+        id,
+        ...data,
+      });
+      // Recargar los fondos desde el backend
+      await loadSavingsFunds();
+    } catch (error) {
+      console.error('Error al actualizar fondo de ahorro:', error);
+      throw error;
+    }
+  };
+
+  const deleteSavingsTransaction = async (id: string) => {
+    try {
+      await deleteSavingsTransactionRequest(id);
+      // Recargar los fondos y transacciones desde el backend
+      await Promise.all([
+        loadSavingsFunds(),
+        loadSavingsTransactions()
+      ]);
+    } catch (error) {
+      console.error('Error al eliminar transacción de ahorro:', error);
+      throw error;
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      await deleteCategoryRequest(id);
+      // Recargar las categorías desde el backend
+      await loadCategories();
+    } catch (error) {
+      console.error('Error al eliminar categoría:', error);
+      throw error;
+    }
+  };
+
+  const updateCategory = async (id: string, data: Partial<Category>) => {
+    try {
+      await updateCategoryRequest({
+        id,
+        ...data,
+      });
+      // Recargar las categorías desde el backend
+      await loadCategories();
+    } catch (error) {
+      console.error('Error al actualizar categoría:', error);
+      throw error;
+    }
   };
 
   return (
@@ -237,11 +327,16 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         addTransaction,
         addCategory,
         deleteTransaction,
+        updateTransaction,
         savingsFunds,
         savingsTransactions,
         addSavingsFund,
         addSavingsTransaction,
         deleteSavingsFund,
+        updateSavingsFund,
+        deleteSavingsTransaction,
+        deleteCategory,
+        updateCategory,
         reloadSavingsFunds: loadSavingsFunds,
         reloadTransactions: loadTransactions,
         reloadSavingsTransactions: loadSavingsTransactions,
