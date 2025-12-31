@@ -84,11 +84,16 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
 
   if (!isOpen) return null;
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      addCategory(newCategoryName.trim());
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    try {
+      await addCategory(newCategoryName.trim());
       setNewCategoryName('');
       setShowCategoryForm(false);
+    } catch (error: any) {
+      // El error ya se maneja en el contexto, pero podemos mostrar un mensaje aquí si es necesario
+      console.error('Error al crear categoría:', error);
     }
   };
 
