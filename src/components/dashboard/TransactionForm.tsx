@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
-import { createTransactionRequest } from '../../request/transactions/transactions.request';
+import { createTransactionRequest, updateTransactionRequest } from '../../request/transactions/transactions.request';
 import type { TransactionType } from '../../types/transaction';
+import type { Transaction } from '../../types/transaction';
 
 interface TransactionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  transactionToEdit?: Transaction | null;
 }
 
-export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalProps) => {
+export const TransactionFormModal = ({ isOpen, onClose, transactionToEdit }: TransactionFormModalProps) => {
   const { t } = useLanguage();
-  const { categories, addCategory, reloadTransactions } = useTransactions();
+  const { categories, addCategory, deleteCategory, updateCategory, reloadTransactions, reloadCategories } = useTransactions();
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; color: string } | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -23,6 +28,30 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
     description: '',
     date: new Date().toISOString().split('T')[0],
   });
+
+  const isEditMode = !!transactionToEdit;
+
+  // Cargar datos de la transacción cuando se abre en modo edición
+  useEffect(() => {
+    if (isOpen && transactionToEdit) {
+      setFormData({
+        type: transactionToEdit.type,
+        amount: transactionToEdit.amount.toString(),
+        category: transactionToEdit.category,
+        description: transactionToEdit.description || '',
+        date: transactionToEdit.date,
+      });
+    } else if (isOpen && !transactionToEdit) {
+      // Reset form cuando se abre en modo creación
+      setFormData({
+        type: 'expense',
+        amount: '',
+        category: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+    }
+  }, [isOpen, transactionToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -42,13 +71,26 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
     setError(null);
 
     try {
-      await createTransactionRequest({
-        type: formData.type,
-        amount: parseFloat(formData.amount),
-        category: formData.category,
-        description: formData.description || undefined,
-        date: formData.date,
-      });
+      if (isEditMode && transactionToEdit) {
+        // Modo edición
+        await updateTransactionRequest({
+          id: transactionToEdit.id,
+          type: formData.type,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      } else {
+        // Modo creación
+        await createTransactionRequest({
+          type: formData.type,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          description: formData.description || undefined,
+          date: formData.date,
+        });
+      }
 
       // Recargar las transacciones desde el backend para obtener los datos actualizados
       await reloadTransactions();
@@ -65,7 +107,7 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
       // Close modal
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Error al crear la transacción. Por favor, intenta de nuevo.');
+      setError(err.message || (isEditMode ? 'Error al actualizar la transacción. Por favor, intenta de nuevo.' : 'Error al crear la transacción. Por favor, intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -91,11 +133,43 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
       await addCategory(newCategoryName.trim());
       setNewCategoryName('');
       setShowCategoryForm(false);
+      await reloadCategories();
     } catch (error: any) {
       // El error ya se maneja en el contexto, pero podemos mostrar un mensaje aquí si es necesario
       console.error('Error al crear categoría:', error);
     }
   };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (confirm('¿Estás seguro de eliminar esta categoría? No se puede eliminar si está en uso.')) {
+      setDeletingCategoryId(categoryId);
+      try {
+        await deleteCategory(categoryId);
+        await reloadCategories();
+      } catch (error: any) {
+        alert(error.message || 'Error al eliminar la categoría. Por favor, intenta de nuevo.');
+      } finally {
+        setDeletingCategoryId(null);
+      }
+    }
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !editingCategory.name.trim()) return;
+
+    try {
+      await updateCategory(editingCategory.id, {
+        name: editingCategory.name.trim(),
+        color: editingCategory.color,
+      });
+      setEditingCategory(null);
+      await reloadCategories();
+    } catch (error: any) {
+      alert(error.message || 'Error al actualizar la categoría. Por favor, intenta de nuevo.');
+    }
+  };
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'];
 
   return (
     <>
@@ -110,7 +184,7 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
         >
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-100 text-left">
-              {t.dashboard.addTransaction}
+              {isEditMode ? 'Editar Transacción' : t.dashboard.addTransaction}
             </h2>
             <button
               onClick={onClose}
@@ -188,8 +262,19 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
                 type="button"
                 onClick={() => setShowCategoryForm(!showCategoryForm)}
                 className="px-4 py-3 bg-blue-deep/50 hover:bg-blue-deep/70 border border-dark-accent rounded-lg text-gray-200 transition-colors"
+                title="Agregar categoría"
               >
                 +
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCategoryManager(!showCategoryManager)}
+                className="px-4 py-3 bg-blue-deep/50 hover:bg-blue-deep/70 border border-dark-accent rounded-lg text-gray-200 transition-colors"
+                title="Gestionar categorías"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
               </button>
             </div>
             {showCategoryForm && (
@@ -217,6 +302,93 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
                 >
                   {t.dashboard.cancel}
+                </button>
+              </div>
+            )}
+            {showCategoryManager && (
+              <div className="mt-4 p-4 bg-blue-deep/20 border border-dark-accent rounded-lg">
+                <h3 className="text-sm font-medium text-gray-300 mb-3">Gestionar Categorías</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="flex items-center gap-2 p-2 bg-blue-deep/30 rounded-lg"
+                    >
+                      {editingCategory?.id === cat.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editingCategory.name}
+                            onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                            className="flex-1 px-2 py-1 bg-blue-deep/50 border border-dark-accent rounded text-gray-100 text-sm"
+                          />
+                          <div className="flex gap-1">
+                            {colors.map((color) => (
+                              <button
+                                key={color}
+                                type="button"
+                                onClick={() => setEditingCategory({ ...editingCategory, color })}
+                                className={`w-6 h-6 rounded ${
+                                  editingCategory.color === color ? 'ring-2 ring-blue-400' : ''
+                                }`}
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleUpdateCategory}
+                            className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCategory(null)}
+                            className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className="w-4 h-4 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          <span className="flex-1 text-sm text-gray-200">{cat.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCategory({ id: cat.id, name: cat.name, color: cat.color })}
+                            className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded transition-colors"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            disabled={deletingCategoryId === cat.id}
+                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
+                            title="Eliminar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryManager(false)}
+                  className="mt-3 w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
+                >
+                  Cerrar
                 </button>
               </div>
             )}
@@ -256,7 +428,7 @@ export const TransactionFormModal = ({ isOpen, onClose }: TransactionFormModalPr
           disabled={loading}
           className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
         >
-          {loading ? 'Guardando...' : t.dashboard.submit}
+          {loading ? 'Guardando...' : (isEditMode ? 'Actualizar' : t.dashboard.submit)}
         </button>
       </form>
         </div>

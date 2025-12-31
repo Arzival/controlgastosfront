@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
 import { createSavingsTransactionRequest } from '../../request/transactions/transactions.request';
+import { SavingsFundModal } from './SavingsFundModal';
 import { calculateAvailableBalance } from '../../utils/availableBalance';
 
 interface ManageFundModalProps {
@@ -12,12 +13,14 @@ interface ManageFundModalProps {
 
 export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProps) => {
   const { t } = useLanguage();
-  const { transactions, savingsFunds, savingsTransactions, addSavingsTransaction, deleteSavingsFund, reloadSavingsFunds, reloadSavingsTransactions } = useTransactions();
+  const { transactions, savingsFunds, savingsTransactions, addSavingsTransaction, deleteSavingsFund, deleteSavingsTransaction, reloadSavingsFunds, reloadSavingsTransactions } = useTransactions();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'history'>('deposit');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+  const [isEditFundModalOpen, setIsEditFundModalOpen] = useState(false);
 
   const fund = savingsFunds.find((f) => f.id === fundId);
   const fundTransactions = savingsTransactions
@@ -83,6 +86,19 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
         onClose();
       } catch (error: any) {
         alert(error.message || 'Error al eliminar el fondo. Por favor, intenta de nuevo.');
+      }
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (confirm('¿Estás seguro de eliminar esta transacción? Esta acción revertirá el balance del fondo.')) {
+      setDeletingTransactionId(transactionId);
+      try {
+        await deleteSavingsTransaction(transactionId);
+      } catch (error: any) {
+        alert(error.message || 'Error al eliminar la transacción. Por favor, intenta de nuevo.');
+      } finally {
+        setDeletingTransactionId(null);
       }
     }
   };
@@ -184,19 +200,36 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
                     key={transaction.id}
                     className="bg-blue-deep/30 border border-dark-accent rounded-lg p-4 flex items-center justify-between"
                   >
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-gray-100 font-medium">{transaction.description}</p>
                       <p className="text-sm text-gray-400">
                         {new Date(transaction.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <p
-                      className={`text-lg font-bold ${
-                        transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
-                      }`}
-                    >
-                      {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p
+                        className={`text-lg font-bold ${
+                          transaction.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                        }`}
+                      >
+                        {transaction.type === 'deposit' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                      </p>
+                      <button
+                        onClick={() => handleDeleteTransaction(transaction.id)}
+                        disabled={deletingTransactionId === transaction.id}
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Eliminar transacción"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -271,17 +304,31 @@ export const ManageFundModal = ({ fundId, isOpen, onClose }: ManageFundModalProp
             </form>
           )}
 
-          {/* Delete button */}
-          <div className="mt-6 pt-6 border-t border-dark-accent">
+          {/* Edit and Delete buttons */}
+          <div className="mt-6 pt-6 border-t border-dark-accent flex gap-3">
+            <button
+              onClick={() => setIsEditFundModalOpen(true)}
+              className="flex-1 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-medium rounded-lg transition-colors"
+            >
+              {t.dashboard.editFund || 'Editar Fondo'}
+            </button>
             <button
               onClick={handleDelete}
-              className="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium rounded-lg transition-colors"
+              className="flex-1 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium rounded-lg transition-colors"
             >
               {t.dashboard.deleteFund}
             </button>
           </div>
         </div>
       </div>
+
+      {isEditFundModalOpen && fund && (
+        <SavingsFundModal
+          isOpen={isEditFundModalOpen}
+          onClose={() => setIsEditFundModalOpen(false)}
+          fundToEdit={fund}
+        />
+      )}
     </>
   );
 };

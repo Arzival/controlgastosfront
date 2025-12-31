@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTransactions } from '../../contexts/TransactionContext';
-import { createSavingsFundRequest } from '../../request/savings/savings.request';
+import { createSavingsFundRequest, updateSavingsFundRequest } from '../../request/savings/savings.request';
+import type { SavingsFund } from '../../types/savings';
 
 interface SavingsFundModalProps {
   isOpen: boolean;
   onClose: () => void;
+  fundToEdit?: SavingsFund | null;
 }
 
 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'];
 
-export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => {
+export const SavingsFundModal = ({ isOpen, onClose, fundToEdit }: SavingsFundModalProps) => {
   const { t } = useLanguage();
   const { reloadSavingsFunds } = useTransactions();
   const [formData, setFormData] = useState({
@@ -20,6 +22,26 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditMode = !!fundToEdit;
+
+  // Cargar datos del fondo cuando se abre en modo edición
+  useEffect(() => {
+    if (isOpen && fundToEdit) {
+      setFormData({
+        name: fundToEdit.name,
+        description: fundToEdit.description || '',
+        color: fundToEdit.color,
+      });
+    } else if (isOpen && !fundToEdit) {
+      // Reset form cuando se abre en modo creación
+      setFormData({
+        name: '',
+        description: '',
+        color: colors[0],
+      });
+    }
+  }, [isOpen, fundToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -39,11 +61,22 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
     setError(null);
 
     try {
-      await createSavingsFundRequest({
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        color: formData.color,
-      });
+      if (isEditMode && fundToEdit) {
+        // Modo edición
+        await updateSavingsFundRequest({
+          id: fundToEdit.id,
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          color: formData.color,
+        });
+      } else {
+        // Modo creación
+        await createSavingsFundRequest({
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          color: formData.color,
+        });
+      }
 
       // Recargar los fondos desde el backend para asegurar sincronización
       await reloadSavingsFunds();
@@ -55,7 +88,7 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
       });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Error al crear la caja de ahorro. Por favor, intenta de nuevo.');
+      setError(err.message || (isEditMode ? 'Error al actualizar la caja de ahorro. Por favor, intenta de nuevo.' : 'Error al crear la caja de ahorro. Por favor, intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +119,7 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
         >
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-100 text-left">
-              {t.dashboard.addSavingsFund}
+              {isEditMode ? (t.dashboard.editFund || 'Editar Fondo de Ahorro') : t.dashboard.addSavingsFund}
             </h2>
             <button
               onClick={onClose}
@@ -160,7 +193,7 @@ export const SavingsFundModal = ({ isOpen, onClose }: SavingsFundModalProps) => 
               disabled={loading}
               className="w-full px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
             >
-              {loading ? 'Creando...' : t.dashboard.createFund}
+              {loading ? (isEditMode ? 'Actualizando...' : 'Creando...') : (isEditMode ? 'Actualizar' : t.dashboard.createFund)}
             </button>
           </form>
         </div>
